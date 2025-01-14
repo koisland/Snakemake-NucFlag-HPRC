@@ -1,13 +1,10 @@
 
-samples:
-  - name: "K1463_2216_h2"
-    asm_fa: /project/logsdon_shared/projects/asm-repair/fa/K1463_2216_hifiasm.fa
-    read_dir: "/project/logsdon_shared/data/platinum_genomes/data/pacbio_hifi/K1463_2216/"
-    read_rgx: ".*\\.fastq.gz$"
-    config: "config/nucflag.toml"
-    region_bed: "/project/logsdon_shared/projects/asm-repair/fa/K1463_2216_ALR_regions.bed"
-    ignore_bed: "config/nucflag_ignore.bed"
-    overlay_beds: []
+manifest_asm: "https://raw.githubusercontent.com/human-pangenomics/hprc_intermediate_assembly/refs/heads/main/data_tables/assemblies_pre_release_v0.4.index.csv"
+output_asm: "/project/logsdon_shared/data/HPRC/assemblies"
+manifest_hifi: "https://raw.githubusercontent.com/human-pangenomics/hprc_intermediate_assembly/refs/heads/main/data_tables/sequencing_data/data_hifi_pre_release.index.csv"
+output_hifi: "/project/logsdon_shared/data/HPRC/hifi"
+manifest_rm: "https://raw.githubusercontent.com/human-pangenomics/hprc_intermediate_assembly/refs/heads/main/data_tables/annotation/repeat_masker/repeat_masker_bed_pre_release_v0.1.index.csv"
+output_rm: "/project/logsdon_shared/data/HPRC/repeatmasker"
 
 output_dir: "results/nucflag"
 output_coverage: false

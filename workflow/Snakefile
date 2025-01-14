@@ -1,34 +1,61 @@
+import os
+
+
+include: "rules/download_data.smk"
+
 
 LOGS_DIR = config.get("logs_dir", "logs/nucflag")
 BMKS_DIR = config.get("benchmarks_dir", "benchmarks/nucflag")
-SAMPLE_INFO = {sm["name"]: sm for sm in config["samples"]}
+SAMPLE_INFO = {}
 
 
-wildcard_constraints:
-    sm="|".join(SAMPLE_INFO.keys()),
+def all_output(wc):
+    chkpt = checkpoints.download_all.get(**wc)
+    _ = chkpt.output
+    inputs = chkpt.rule.input
 
-
-module Align:
-    snakefile:
-        github(
-            "logsdon-lab/Snakemake-Aligner", path="workflow/Snakefile", branch="main"
-        )
-    config:
-        {
-            **config,
-            "aligner": "pbmm2",
-            "aigner_opts": "--log-level DEBUG --preset SUBREAD --min-length 5000",
-            "logs_dir": LOGS_DIR,
-            "benchmarks_dir": BMKS_DIR,
+    samples = glob_wildcards(os.path.join(str(inputs.asm), "{asm}", "{sm}")).sm
+    for sm in samples:
+        SAMPLE_INFO[sm] = {
+            "name": sm,
+            "asm_dir": str(inputs.asm),
+            "asm_rgx": ".*\\.fa.gz",
+            "read_dir": str(inputs.hifi),
+            "read_rgx": ".*\\.bam$",
+            "config": "config/nucflag.toml",
+            # "overlay_beds": [],
         }
 
+    wildcard_constraints:
+        sm="|".join(SAMPLE_INFO.keys()),
 
-use rule * from Align
+    module Align:
+        snakefile:
+            github(
+                "logsdon-lab/Snakemake-Aligner", path="workflow/Snakefile", branch="main"
+            )
+        config:
+            {
+                **config,
+                "samples": list(SAMPLE_INFO.values()),
+                "aligner": "pbmm2",
+                "aigner_opts": "--log-level DEBUG --preset SUBREAD --min-length 5000",
+                "logs_dir": LOGS_DIR,
+                "benchmarks_dir": BMKS_DIR,
+            }
+
+
+    use rule * from Align
+
+    return {
+        "nucflag": expand(rules.check_asm_nucflag.output, sm=SAMPLE_INFO.keys()),
+        "bam": expand(os.path.join(config["output_dir"], "{sm}.bam"), sm=SAMPLE_INFO.keys())
+    }
 
 
 rule check_asm_nucflag:
     input:
-        bam_file=ancient(rules.merge_read_asm_alignments.output.alignment),
+        bam_file=ancient(os.path.join(config["output_dir"], "{sm}.bam")),
         # Optional arguments.
         regions=lambda wc: SAMPLE_INFO[str(wc.sm)].get("region_bed", []),
         config=lambda wc: SAMPLE_INFO[str(wc.sm)].get("config", []),
@@ -91,7 +118,14 @@ rule check_asm_nucflag:
         """
 
 
+rule all_outputs:
+    input:
+        unpack(all_output)
+    output:
+        touch("all_outputs.done")
+
+
 rule nucflag:
     input:
-        expand(rules.check_asm_nucflag.output, sm=SAMPLE_INFO.keys()),
+        rules.all_outputs.output,
     default_target: True
