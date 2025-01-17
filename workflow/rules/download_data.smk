@@ -12,7 +12,7 @@ rule download_repeatmasker:
         """
         wget -O - {params.manifest} | \
         cut -f 1,3 -d, | \
-        tail -n+1 | \
+        tail -n+2 | \
         parallel -j {threads} --colsep ',' \
         'mkdir -p {output}/{{1}}/ && aws s3 --no-sign-request cp {{2}} {output}/{{1}}/'
         """
@@ -30,7 +30,7 @@ rule download_assemblies:
         """
         wget -O - {params.manifest} | \
         cut -f 1,4,13 -d, | \
-        tail -n+1 | \
+        tail -n+2 | \
         parallel -j {threads} --colsep ',' \
         'mkdir -p {output}/{{2}}/{{1}}/ && aws s3 --no-sign-request cp {{3}} {output}/{{2}}/{{1}}/'
         """
@@ -48,10 +48,22 @@ rule download_hifi:
         """
         wget -O - {params.manifest} | \
         cut -f 2,3 -d, | \
-        tail -n+1 | \
+        tail -n+2 | \
         parallel -j {threads} --colsep ',' \
         'mkdir -p {output}/{{1}}/ && aws s3 --no-sign-request cp {{2}} {output}/{{1}}/'
         """
+
+# If fail.
+"""
+wget -O - https://raw.githubusercontent.com/human-pangenomics/hprc_intermediate_assembly/refs/heads/main/data_tables/sequencing_data/data_hifi_pre_release.index.csv | \
+cut -f 2,3 -d, | \
+tail -n+2 | \
+parallel -j 80 --colsep ',' 'outdir=/project/logsdon_shared/data/HPRC/hifi/; \
+mkdir -p $outdir/{1}/; \
+fname=$(basename {2}); \
+outfile=/project/logsdon_shared/data/HPRC/hifi/{1}/$fname; \
+if [ ! -f $outfile ]; then aws s3 --no-sign-request cp {2} $outfile; fi'
+"""
 
 checkpoint download_all:
     input:

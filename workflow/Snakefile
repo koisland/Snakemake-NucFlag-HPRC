@@ -9,6 +9,17 @@ BMKS_DIR = config.get("benchmarks_dir", "benchmarks/nucflag")
 SAMPLE_INFO = {}
 
 
+rule format_repeatmasker:
+    input:
+        rm_bed_dir=os.path.join(config["output_rm"], "{sm}")
+    output:
+        rm_bed="results/bed/{sm}_rm_overlay.bed"
+    shell:
+        """
+        awk -v OFS='\\t' '{print $1, $2, $3, $7"_"$4, "action:plot"}' {input}/*.bed > {output.rm_bed}
+        """
+
+
 def all_output(wc):
     chkpt = checkpoints.download_all.get(**wc)
     _ = chkpt.output
@@ -23,7 +34,7 @@ def all_output(wc):
             "read_dir": str(inputs.hifi),
             "read_rgx": ".*\\.bam$",
             "config": "config/nucflag.toml",
-            # "overlay_beds": [],
+            "overlay_beds": [f"results/bed/{sm}_rm_overlay.bed"],
         }
 
     wildcard_constraints:
