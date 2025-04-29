@@ -1,0 +1,142 @@
+import os
+
+
+include: "rules/download_data.smk"
+
+
+LOGS_DIR = config.get("logs_dir", "logs/nucflag")
+BMKS_DIR = config.get("benchmarks_dir", "benchmarks/nucflag")
+SAMPLE_INFO = {}
+
+
+rule format_repeatmasker:
+    input:
+        rm_bed_dir=os.path.join(config["output_rm"], "{sm}")
+    output:
+        rm_bed="results/bed/{sm}_rm_overlay.bed"
+    shell:
+        """
+        awk -v OFS='\\t' '{print $1, $2, $3, $7"_"$4, "action:plot"}' {input}/*.bed > {output.rm_bed}
+        """
+
+
+def all_output(wc):
+    chkpt = checkpoints.download_all.get(**wc)
+    _ = chkpt.output
+    inputs = chkpt.rule.input
+
+    samples = glob_wildcards(os.path.join(str(inputs.asm), "{asm}", "{sm}")).sm
+    for sm in samples:
+        SAMPLE_INFO[sm] = {
+            "name": sm,
+            "asm_dir": str(inputs.asm),
+            "asm_rgx": ".*\\.fa.gz",
+            "read_dir": str(inputs.hifi),
+            "read_rgx": ".*\\.bam$",
+            "config": "config/nucflag.toml",
+            "overlay_beds": [f"results/bed/{sm}_rm_overlay.bed"],
+        }
+
+    wildcard_constraints:
+        sm="|".join(SAMPLE_INFO.keys()),
+
+    module Align:
+        snakefile:
+            github(
+                "logsdon-lab/Snakemake-Aligner", path="workflow/Snakefile", branch="main"
+            )
+        config:
+            {
+                **config,
+                "samples": list(SAMPLE_INFO.values()),
+                "aligner": "pbmm2",
+                "aigner_opts": "--log-level DEBUG --preset SUBREAD --min-length 5000",
+                "logs_dir": LOGS_DIR,
+                "benchmarks_dir": BMKS_DIR,
+            }
+
+
+    use rule * from Align
+
+    return {
+        "nucflag": expand(rules.check_asm_nucflag.output, sm=SAMPLE_INFO.keys()),
+        "bam": expand(os.path.join(config["output_dir"], "{sm}.bam"), sm=SAMPLE_INFO.keys())
+    }
+
+
+rule check_asm_nucflag:
+    input:
+        bam_file=ancient(os.path.join(config["output_dir"], "{sm}.bam")),
+        # Optional arguments.
+        regions=lambda wc: SAMPLE_INFO[str(wc.sm)].get("region_bed", []),
+        config=lambda wc: SAMPLE_INFO[str(wc.sm)].get("config", []),
+        ignore_regions=lambda wc: SAMPLE_INFO[str(wc.sm)].get("ignore_bed", []),
+        overlay_regions=lambda wc: SAMPLE_INFO[str(wc.sm)].get("overlay_beds", []),
+    output:
+        plot_dir=directory(os.path.join(config["output_dir"], "{sm}")),
+        cov_dir=(
+            directory(os.path.join(config["output_dir"], "{sm}_coverage"))
+            if config.get("output_coverage")
+            else []
+        ),
+        misassemblies=os.path.join(
+            config["output_dir"],
+            "{sm}_misassemblies.bed",
+        ),
+        asm_status=os.path.join(
+            config["output_dir"],
+            "{sm}_status.bed",
+        ),
+    params:
+        regions=lambda wc, input: f"-b {input.regions}" if input.regions else "",
+        config=lambda wc, input: f"-c {input.config}" if input.config else "",
+        ignore_regions=lambda wc, input: (
+            f"--ignore_regions {input.ignore_regions}" if input.ignore_regions else ""
+        ),
+        overlay_regions=lambda wc, input: (
+            f"--overlay_regions {' '.join(input.overlay_regions)}"
+            if input.overlay_regions
+            else ""
+        ),
+        output_coverage=lambda wc, output: (
+            f"--output_cov_dir {output.cov_dir}"
+            if config.get("output_coverage")
+            else ""
+        ),
+    threads: config["processes_nucflag"]
+    conda:
+        "env/nucflag.yaml"
+    resources:
+        mem=config["mem_nucflag"],
+    log:
+        os.path.join(LOGS_DIR, "run_nucflag_{sm}.log"),
+    benchmark:
+        os.path.join(BMKS_DIR, "run_nucflag_{sm}.tsv")
+    shell:
+        """
+        nucflag \
+        -i {input.bam_file} \
+        -d {output.plot_dir} \
+        -o {output.misassemblies} \
+        -t {threads} \
+        -p {threads} \
+        -s {output.asm_status} \
+        {params.config} \
+        {params.regions} \
+        {params.ignore_regions} \
+        {params.overlay_regions} \
+        {params.output_coverage} &> {log}
+        """
+
+
+rule all_outputs:
+    input:
+        unpack(all_output)
+    output:
+        touch("all_outputs.done")
+
+
+rule nucflag:
+    input:
+        rules.all_outputs.output,
+    default_target: True

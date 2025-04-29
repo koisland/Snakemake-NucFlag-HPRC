@@ -6,7 +6,6 @@ import polars as pl
 VERSION = "v0.3.3"
 DTYPE = "hifi"
 OUTDIR = "/project/logsdon_shared/projects/HPRC/CenMAP/nucflag_hprc/results_hprc"
-FINAL_SM_OUTDIR = join(OUTDIR, "final", "{sm}", "hprc_r2", "assembly_qc", "nucflag", f"{VERSION}_{DTYPE}")
 # Haplotypes switched. BAM is from assembly v1.0.1
 # See https://github.com/human-pangenomics/hprc_intermediate_assembly/tree/main/data_tables#known-issues
 EXCLUDE_SAMPLES = {
@@ -14,13 +13,6 @@ EXCLUDE_SAMPLES = {
     "HG01978",
     "HG03516"
 }
-df_metadata = pl.read_csv("/project/logsdon_shared/data/HPRC/assemblies/assemblies_pre_release_v0.6.1.index.csv")
-
-NAME_ASM_KEY = dict(
-    df_metadata
-    .select("assembly_name", "assembly_method")
-    .iter_rows()
-)
 SAMPLE_BAMS = {}
 for d in glob.glob("data/aln/*"):
     if not os.path.isdir(d) or d.startswith("."):
@@ -31,16 +23,24 @@ for d in glob.glob("data/aln/*"):
     # Sort first to always take deep concensus bams.
     bam_files = glob.glob(join(d, "*.bam"))
     bam_files.sort()
-    try:
+
+    try:    
         bam_file = next(iter(bam_files))
     except Exception:
         continue
+    
     SAMPLE_BAMS[sm] = bam_file
 
-SAMPLES, ASM_NAMES = zip(*
+CHROM_ALIASES = glob.glob("/project/logsdon_shared/data/HPRC/annotations/*.chromAlias.txt")
+df_metadata = pl.read_csv("/project/logsdon_shared/data/HPRC/assemblies/assemblies_pre_release_v0.6.1.index.csv")
+SM_NAME_KEY = dict(
     df_metadata
-    .filter(pl.col("sample_id").is_in(SAMPLE_BAMS.keys()))
     .select("sample_id", "assembly_name")
+    .iter_rows()
+)
+NAME_ASM_KEY = dict(
+    df_metadata
+    .select("assembly_name", "assembly_method")
     .iter_rows()
 )
 
@@ -103,43 +103,26 @@ rule run_nucflag:
         {params.rm_bed} &> {log}
         """
 
-def normalize_hap(wc):
-    required_hap = wc.asm.split("_")[1]
-    if required_hap == "mat" or required_hap == "hap2":
-        required_hap = "2"
-    elif required_hap == "pat" or required_hap == "hap1":
-        required_hap = "1"
-    else:
-        raise ValueError(wc)
-    return required_hap
-
 rule convert_nucflag_to_bed9:
     input:
         mtypes="mtype.json",
         bed=rules.run_nucflag.output.misassemblies
     output:
         bed=join(
-            FINAL_SM_OUTDIR,
-            "{asm}.nucflag.bed",
+            OUTDIR,
+            "{sm}_nucflag.bed",
         )
-    params:
-        hap=normalize_hap
     run:
         import json
         with open(input.mtypes) as fh:
             MTYPES = json.load(fh)
-    
+        
         with (
             open(input.bed) as fh,
             open(output.bed, "wt") as ofh
         ):
             for line in fh:
                 chrom, st, end, mtype = line.strip().split()
-                # mat is 2. pat is 1.
-                hap = chrom.split("#")[1]
-                if hap != params.hap:
-                    continue
-
                 st, end = int(st) + 1, int(end) + 1
                 st, end = str(st), str(end)
                 orow = [
@@ -156,21 +139,22 @@ rule convert_nucflag_to_bed9:
                 ofh.write("\t".join(orow) + "\n")
 
 
-def get_fai(wc):
-    METHOD = NAME_ASM_KEY[wc.asm]
-    return glob.glob(f"/project/logsdon_shared/data/HPRC/assemblies/{METHOD}/{wc.sm}/{wc.asm}*.fai")
+def get_asm_dir(wc):
+    ASM_NAME = SM_NAME_KEY[wc.sm]
+    METHOD = NAME_ASM_KEY[ASM_NAME]
+    return f"/project/logsdon_shared/data/HPRC/assemblies/{METHOD}/{wc.sm}/"
 
 rule make_chrom_size:
     input:
         bam_file=lambda wc: SAMPLE_BAMS[wc.sm],
-        fai=get_fai
+        asm_dir=get_asm_dir
     output:
-        temp(join(FINAL_SM_OUTDIR, "{asm}_chrom_sizes.tsv")),
+        first_wig=temp(join(OUTDIR, "{sm}_chrom_sizes.tsv")),
     params:
         bam_file=lambda wc, input: os.path.realpath(input.bam_file)
     shell:
         """
-        cut -f 1,2 {input.fai} | \
+        cut -f 1,2 {input.asm_dir}/*.fai | \
         grep -f <(samtools view -H {params.bam_file} | grep SQ | cut -f 2 | sed 's/SN://g') > {output}
         """
 
@@ -179,10 +163,8 @@ rule split_cov_to_wigs:
         script="make_wig_files.py",
         cov_dir=rules.run_nucflag.output.plot_dir
     output:
-        first_wig=temp(join(FINAL_SM_OUTDIR, "{asm}.nucflag.first.wig")),
-        second_wig=temp(join(FINAL_SM_OUTDIR, "{asm}.nucflag.second.wig")),
-    params:
-        hap=normalize_hap
+        first_wig=temp(join(OUTDIR, "{sm}_first.wig")),
+        second_wig=temp(join(OUTDIR, "{sm}_second.wig")),
     conda:
         "general"
     shell:
@@ -190,8 +172,7 @@ rule split_cov_to_wigs:
         python {input.script} \
         {input.cov_dir} \
         {output.first_wig} \
-        {output.second_wig} \
-        {params.hap}
+        {output.second_wig}
         """
 
 rule convert_first_wig_to_bigwig:
@@ -199,7 +180,7 @@ rule convert_first_wig_to_bigwig:
         wig=rules.split_cov_to_wigs.output.first_wig,
         chrom_sizes=rules.make_chrom_size.output,
     output:
-        bw=join(FINAL_SM_OUTDIR, "{asm}.nucflag.first.bw"),
+        bw=join(OUTDIR, "{sm}_nucflag_first.bw"),
     conda:
         "general"
     resources:
@@ -214,12 +195,12 @@ use rule convert_first_wig_to_bigwig as convert_second_wig_to_bigwig with:
         wig=rules.split_cov_to_wigs.output.second_wig,
         chrom_sizes=rules.make_chrom_size.output,
     output:
-        bw=join(FINAL_SM_OUTDIR, "{asm}.nucflag.second.bw"),
+        bw=join(OUTDIR, "{sm}_nucflag_second.bw"),
         
 
 """
 upload_folder \
-    {sample_id}/hprc_r2/assembly_qc/nucflag/v0.3.3_hifi \
+    {sample_id}/hprc_r2/assembly_qc/nucflag \
         {assembly_id}.nucflag.first.bw
         {assembly_id}.nucflag.second.bw
         {assembly_id}.nucflag.bed
@@ -228,52 +209,43 @@ upload_folder \
 So sample ID would be HG000099 and asssembly id would be HG00099_hap1_hprc_v1.0.1 (from the assembly index file; in the assembly id column)
 """
 
-rule create_plot_tarballs:
-    input:
-        plot_dir = rules.run_nucflag.output.plot_dir
-    output:
-        join(FINAL_SM_OUTDIR, "{asm}.nucflag.plots.tar.gz")
-    params:
-        hap=normalize_hap
-    conda:
-        "general"
-    shell:
-        """
-        cd {input.plot_dir}
-        tar -czf {output} {wildcards.sm}#{params.hap}*.png
-        """
-
-rule generate_md5_hash:
+rule create_tarballs:
     input:
         first_bw = rules.convert_first_wig_to_bigwig.output,
         second_bw = rules.convert_second_wig_to_bigwig.output,
         bedfile = rules.convert_nucflag_to_bed9.output,
-        plots = rules.create_plot_tarballs.output
+        plot_dir = rules.run_nucflag.output.plot_dir
     output:
-        rules.convert_first_wig_to_bigwig.output[0] + ".md5",
-        rules.convert_second_wig_to_bigwig.output[0] + ".md5",
-        rules.convert_nucflag_to_bed9.output[0] + ".md5",
-        rules.create_plot_tarballs.output[0] + ".md5",
+        join(OUTDIR, "{sm}.done")
     params:
-        indir = lambda wc, input: os.path.dirname(input[0])
+        assembly_id=lambda wc: SM_NAME_KEY[wc.sm],
+        # hprc_r2/assembly_qc/nucflag/
+        tmp_dir=lambda wc: join(OUTDIR, "final", wc.sm, "hprc_r2", "assembly_qc", "nucflag", f"{VERSION}_{DTYPE}")
+    conda:
+        "general"
     threads:
         4
     shell:
         """
-        cd {input.indir}
-        find . -mindepth 1 -not -name "*.md5" | parallel -j {threads} 'md5sum {{}} > {{}}.md5'
+        mkdir -p {params.tmp_dir}
+        ln -sf {input.first_bw} {params.tmp_dir}/{params.assembly_id}.nucflag.first.bw
+        ln -sf {input.second_bw} {params.tmp_dir}/{params.assembly_id}.nucflag.second.bw
+        ln -sf {input.bedfile} {params.tmp_dir}/{params.assembly_id}.nucflag.bed
+        cd {input.plot_dir}
+        tar -czf {params.tmp_dir}/{params.assembly_id}.nucflag.plots.tar.gz *.png
+        cd {params.tmp_dir}
+        ls | parallel -j {threads} 'md5sum {{}} > {{}}.md5'
+        touch {output}
         """
 
 wildcard_constraints:
-    sm="|".join(SAMPLES),
-    asm="|".join(ASM_NAMES),
+    sm="|".join(SAMPLE_BAMS)
 
 rule all:
     input:
-        expand(rules.run_nucflag.output, sm=SAMPLES),
-        expand(rules.convert_nucflag_to_bed9.output, zip, sm=SAMPLES, asm=ASM_NAMES),
-        expand(rules.convert_first_wig_to_bigwig.output, zip, sm=SAMPLES, asm=ASM_NAMES),
-        expand(rules.convert_second_wig_to_bigwig.output, zip, sm=SAMPLES, asm=ASM_NAMES),
-        expand(rules.create_plot_tarballs.output, zip, sm=SAMPLES, asm=ASM_NAMES),
-        expand(rules.generate_md5_hash.output, zip, sm=SAMPLES, asm=ASM_NAMES),
+        expand(rules.run_nucflag.output, sm=SAMPLE_BAMS),
+        expand(rules.convert_nucflag_to_bed9.output, sm=SAMPLE_BAMS),
+        expand(rules.convert_first_wig_to_bigwig.output, sm=SAMPLE_BAMS),
+        expand(rules.convert_second_wig_to_bigwig.output, sm=SAMPLE_BAMS),
+        expand(rules.create_tarballs.output, sm=SAMPLE_BAMS),
     default_target: True
