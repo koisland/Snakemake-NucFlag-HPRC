@@ -17,8 +17,13 @@ def main():
         "misassemblies": "nucflag.bed",
         "plots": "nucflag.plots.tar.gz",
     }
+    exclude_samples = {
+        "HG02257",
+        "HG01978",
+        "HG03516"
+    }
     samples = [
-        os.path.basename(p) for p in glob.glob(f"{indir}/*")
+        os.path.basename(p) for p in glob.glob(f"{indir}/*") if not os.path.basename(p) in exclude_samples
     ]
     df_metadata = pl.read_csv(
         "/project/logsdon_shared/data/HPRC/assemblies/assemblies_pre_release_v0.6.1.index.csv"
