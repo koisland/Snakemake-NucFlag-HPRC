@@ -2,7 +2,16 @@
 LOGS_DIR = config.get("logs_dir", "logs/nucflag")
 BMKS_DIR = config.get("benchmarks_dir", "benchmarks/nucflag")
 SAMPLE_INFO = {sm["name"]: sm for sm in config["samples"]}
-
+MTYPES = {
+    "GOOD": "135,206,235",
+    "COLLAPSE_VAR": "0,0,255",
+    "COLLAPSE": "0,255,0",
+    "MISJOIN": "255,165,0",
+    "HET": "0,128,128",
+    "COLLAPSE_OTHER": "255,0,0"
+}
+VERSION = "v0.3.3"
+DTYPE = "hifi"
 
 wildcard_constraints:
     sm="|".join(SAMPLE_INFO.keys()),
@@ -88,8 +97,100 @@ rule check_asm_nucflag:
         {params.output_coverage} &> {log}
         """
 
+rule convert_nucflag_to_bed9:
+    input:
+        bed=rules.check_asm_nucflag.output.misassemblies
+    output:
+        bed=os.path.join(
+            config["output_dir"],
+            "{sm}_nucflag.bed",
+        )
+    run:
+        with (
+            open(input.bed) as fh,
+            open(output.bed, "wt") as ofh
+        ):
+            for line in fh:
+                chrom, st, end, mtype = line.strip().split()
+                st, end = int(st) + 1, int(end) + 1
+                st, end = str(st), str(end)
+                orow = [
+                    chrom,
+                    st,
+                    end,
+                    mtype,
+                    "0",
+                    ".",
+                    st,
+                    end,
+                    MTYPES[mtype]
+                ]
+                ofh.write("\t".join(orow) + "\n")
+
+
+rule split_cov_to_bigwigs:
+    input:
+        script="workflow/scripts/make_wig_files.py",
+        cov_dir=rules.check_asm_nucflag.output.cov_dir
+    output:
+        first_bw=os.path.join(config["output_dir"], "{sm}_first.bw"),
+        second_bw=os.path.join(config["output_dir"], "{sm}_second.bw"),
+    conda:
+        "env/tools.yaml"
+    shell:
+        """
+        python {input.script} \
+        {input.cov_dir} \
+        {output.first_bw} \
+        {output.second_bw}
+        """
+
+"""
+upload_folder \
+    {sample_id}/hprc_r2/assembly_qc/nucflag \
+        {assembly_id}.nucflag.first.bw
+        {assembly_id}.nucflag.second.bw
+        {assembly_id}.nucflag.bed
+        {assembly_id}.nucflag.plots.tar.gz
+
+So sample ID would be HG000099 and asssembly id would be HG00099_hap1_hprc_v1.0.1 (from the assembly index file; in the assembly id column)
+"""
+
+rule create_tarballs:
+    input:
+        first_bw = rules.split_cov_to_bigwigs.output.first_bw,
+        second_bw = rules.split_cov_to_bigwigs.output.second_bw,
+        bedfile = rules.convert_nucflag_to_bed9.output,
+        plot_dir = rules.check_asm_nucflag.output.plot_dir
+    output:
+        os.path.join(config["output_dir"], "{sm}.done")
+    params:
+        assembly_id="{sm}",
+        # hprc_chry/assembly_qc/nucflag/
+        tmp_dir=lambda wc: os.path.join(config["output_dir"], "final", wc.sm, "hprc_chry", "assembly_qc", "nucflag", f"{VERSION}_{DTYPE}")
+    conda:
+        "general"
+    threads:
+        4
+    shell:
+        """
+        mkdir -p {params.tmp_dir}
+        ln -sf {input.first_bw} {params.tmp_dir}/{params.assembly_id}.nucflag.first.bw
+        ln -sf {input.second_bw} {params.tmp_dir}/{params.assembly_id}.nucflag.second.bw
+        ln -sf {input.bedfile} {params.tmp_dir}/{params.assembly_id}.nucflag.bed
+        cd {input.plot_dir}
+        tar -czf {params.tmp_dir}/{params.assembly_id}.nucflag.plots.tar.gz *.png
+        cd {params.tmp_dir}
+        ls | parallel -j {threads} 'md5sum {{}} > {{}}.md5'
+        touch {output}
+        """
+
+
 
 rule nucflag:
     input:
         expand(rules.check_asm_nucflag.output, sm=SAMPLE_INFO.keys()),
+        expand(rules.convert_nucflag_to_bed9.output, sm=SAMPLE_INFO.keys()),
+        expand(rules.split_cov_to_bigwigs.output, sm=SAMPLE_INFO.keys()),
+        expand(rules.create_tarballs.output, sm=SAMPLE_INFO.keys()),
     default_target: True

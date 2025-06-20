@@ -1,0 +1,9 @@
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python==3.12.0
+  - samtools
+  - pip
+  - pip:
+    - polars

@@ -1,0 +1,11 @@
+
+samples: []
+output_dir: "results/nucflag"
+output_coverage: false
+logs_dir: "logs/nucflag"
+benchmarks_dir: "benchmarks/nucflag"
+threads_aln: 8
+mem_aln: 30G
+processes_nucflag: 12
+mem_nucflag: 50G
+samtools_view_flag: 2308
