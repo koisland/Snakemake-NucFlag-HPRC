@@ -7,7 +7,7 @@ def main():
     
     n = int(sys.argv[1])
 
-    batches = glob.glob(os.path.join(wd, "batch_*.txt"))
+    batches = glob.glob(os.path.join(wd, "batches", "batch_*.txt"))
     samples_done = set()
     for batch in batches:
         with open(batch, "rt") as fh:
@@ -21,7 +21,7 @@ def main():
             line = line.strip()
             all_samples.add(line)
 
-    remaining_samples = list(all_samples.difference(samples_done)  )
+    remaining_samples = list(all_samples.difference(samples_done))
 
     next_batch = random.sample(remaining_samples, n)
 

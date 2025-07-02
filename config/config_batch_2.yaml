@@ -2,7 +2,7 @@ benchmarks_dir: benchmarks/nucflag
 logs_dir: logs/nucflag
 mem_aln: 30G
 mem_nucflag: 50G
-output_coverage: false
+output_coverage: true
 output_dir: results/nucflag
 processes_nucflag: 12
 samples:
@@ -116,11 +116,6 @@ samples:
   config: config/nucflag.toml
   name: HG02602
   read_fofn: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/hifi/HG02602.fofn
-- asm_dir: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/asm/NA18612
-  asm_rgx: .*\.gz$
-  config: config/nucflag.toml
-  name: NA18612
-  read_fofn: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/hifi/NA18612.fofn
 - asm_dir: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/asm/HG01167
   asm_rgx: .*\.gz$
   config: config/nucflag.toml

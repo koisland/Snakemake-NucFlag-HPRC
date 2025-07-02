@@ -15,7 +15,7 @@ def main():
 
     sm_batches = glob.glob(os.path.join(wd, "batches", f"batch_{batch_n}.txt"))
 
-    cfg_template = "/project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/config/config.yaml"
+    cfg_template = "/project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/config/config_template.yaml"
     with open(cfg_template) as fh:
         cfg = yaml.safe_load(fh)
 

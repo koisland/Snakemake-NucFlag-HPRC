@@ -4,6 +4,7 @@ channels:
 dependencies:
   - python==3.12.0
   - samtools
+  - bigtools
   - pip
   - pip:
     - polars
