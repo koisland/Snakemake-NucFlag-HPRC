@@ -1,6 +1,11 @@
 # NucFlag for HPRC chrY
-WIP. Only works on UPenn's LPC.
+Configured for UPenn's LPC. Replace paths in related scripts and workflow as needed.
 
+## Output
+See `results.tsv`
+
+## Setup & Usage
+Run workflow in batches.
 ```bash
 # chrY
 aws s3 sync --no-sign-request s3://human-pangenomics/T2T/scratch/chrY/v2/chrY_assemblies/ /project/logsdon_shared/data/HPRC/assemblies/verkko_chrY/chrY
@@ -17,10 +22,10 @@ ln -s /project/logsdon_shared/data/HPRC/assemblies/verkko_chrY/grouped data/asm
 # Generate configfiles
 pushd config
 
-# Create first batch
-python get_next_batch.py 1 > batch_1.txt
+# Create first batch of 25.
+python get_next_batch.py 25 > batch_1.txt
 
-# Generate config
+# Generate config for batch 1
 python generate_config.py 1 > config_batch_1.yaml
 
 pushd ..
@@ -30,6 +35,20 @@ snakemake -np --configfile config_batch_1.yaml -j 100 --workflow-profile ~/profi
 
 popd
 
-# Then create next batch
-python get_next_batch.py 2 > batch_2.txt
+# Then create next batch and repeat.
+python get_next_batch.py 25 > batch_2.txt
+
+# ...
+```
+
+Upload to HPRC AWS buckets. Requires AWS credentials and submission id.
+```bash
+pip install git+https://github.com/DataBiosphere/ssds
+bash upload_to_hprc.sh
+```
+
+Make `results.tsv`.
+```bash
+pip install polars
+python make_data_manifest.py
 ```
