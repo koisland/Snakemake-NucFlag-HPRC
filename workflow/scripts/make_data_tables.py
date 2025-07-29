@@ -58,6 +58,8 @@ def main():
                 haplotype=pl.col("assembly_name").map_elements(normalize_hap, return_dtype=pl.String),
                 location=BASE_URI + pl.col("sample_id") + SUB_URI + pl.col("assembly_name") + f".{file_suffix}" 
             )
+            .sort("haplotype", "sample_id")
+            .select("sample_id", "haplotype", "assembly_name", "location")
         )
         (
             df_res
