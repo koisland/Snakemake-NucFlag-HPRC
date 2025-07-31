@@ -4,7 +4,7 @@ import sys
 import polars as pl
 
 def main():
-    INPUT_DIR = glob.glob("/project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/results/nucflag/final/*")
+    INPUT_DIR = glob.glob("/project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/results/*/final/*")
     SUBMISSION_ID="283198D5-BB8F-49CB-B1F9-CE1500812D8E"
     SUBMISSION_NAME="HPRC_R2_CHRY_QC_NUCFLAG"
     OUTPUT_URL = f"https://s3-us-west-2.amazonaws.com/human-pangenomics/submissions/{SUBMISSION_ID}--{SUBMISSION_NAME}/{{sample}}/hprc_chry/assembly_qc/nucflag/v0.3.4_hifi/"

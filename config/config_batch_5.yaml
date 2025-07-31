@@ -1,0 +1,30 @@
+benchmarks_dir: benchmarks/nucflag
+logs_dir: logs/nucflag
+mem_aln: 30G
+mem_nucflag: 50G
+output_coverage: true
+output_dir: results/nucflag
+processes_nucflag: 12
+samples:
+- asm_dir: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/asm/HG003
+  asm_rgx: .*\.gz$
+  config: config/nucflag.toml
+  name: HG003
+  read_fofn: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/hifi/HG003.fofn
+- asm_dir: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/asm/HG00329
+  asm_rgx: .*\.gz$
+  config: config/nucflag.toml
+  name: HG00329
+  read_fofn: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/hifi/HG00329.fofn
+- asm_dir: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/asm/HG03492
+  asm_rgx: .*\.gz$
+  config: config/nucflag.toml
+  name: HG03492
+  read_fofn: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/hifi/HG03492.fofn
+- asm_dir: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/asm/NA18612
+  asm_rgx: .*\.gz$
+  config: config/nucflag.toml
+  name: NA18612
+  read_fofn: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/hifi/NA18612.fofn
+samtools_view_flag: 2308
+threads_aln: 8
