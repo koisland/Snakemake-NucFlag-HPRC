@@ -1,0 +1,40 @@
+benchmarks_dir: benchmarks/nucflag
+logs_dir: logs/nucflag
+mem_aln: 30G
+mem_nucflag: 50G
+output_coverage: true
+output_dir: results/nucflag
+processes_nucflag: 12
+samples:
+- asm_dir: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/grouped_asm_ceph/NA12886
+  asm_rgx: .*\.gz$
+  config: config/nucflag.toml
+  name: NA12886
+  read_fofn: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/hifi_ceph/NA12886.fofn
+- asm_dir: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/grouped_asm_ceph/200080
+  asm_rgx: .*\.gz$
+  config: config/nucflag.toml
+  name: '200080'
+  read_fofn: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/hifi_ceph/200080.fofn
+- asm_dir: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/grouped_asm_ceph/200084
+  asm_rgx: .*\.gz$
+  config: config/nucflag.toml
+  name: '200084'
+  read_fofn: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/hifi_ceph/200084.fofn
+- asm_dir: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/grouped_asm_ceph/200085
+  asm_rgx: .*\.gz$
+  config: config/nucflag.toml
+  name: '200085'
+  read_fofn: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/hifi_ceph/200085.fofn
+- asm_dir: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/grouped_asm_ceph/NA12877
+  asm_rgx: .*\.gz$
+  config: config/nucflag.toml
+  name: NA12877
+  read_fofn: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/hifi_ceph/NA12877.fofn
+- asm_dir: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/grouped_asm_ceph/NA12882
+  asm_rgx: .*\.gz$
+  config: config/nucflag.toml
+  name: NA12882
+  read_fofn: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/hifi_ceph/NA12882.fofn
+samtools_view_flag: 2308
+threads_aln: 8
