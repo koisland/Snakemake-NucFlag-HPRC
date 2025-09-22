@@ -36,5 +36,15 @@ samples:
   config: config/nucflag.toml
   name: NA12882
   read_fofn: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/hifi_ceph/NA12882.fofn
+- asm_dir: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/grouped_asm_ceph/NA12883
+  asm_rgx: .*\.gz$
+  config: config/nucflag.toml
+  name: NA12883
+  read_fofn: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/hifi_ceph/NA12883.fofn
+- asm_dir: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/grouped_asm_ceph/NA12884
+  asm_rgx: .*\.gz$
+  config: config/nucflag.toml
+  name: NA12884
+  read_fofn: /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/data/hifi_ceph/NA12884.fofn
 samtools_view_flag: 2308
 threads_aln: 8
