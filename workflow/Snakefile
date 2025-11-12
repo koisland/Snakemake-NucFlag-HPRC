@@ -127,7 +127,6 @@ rule convert_nucflag_to_bed9:
         ):
             for line in fh:
                 chrom, st, end, mtype = line.strip().split()
-                st, end = int(st) + 1, int(end) + 1
                 st, end = str(st), str(end)
                 orow = [
                     chrom,
