@@ -1,0 +1,9 @@
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python==3.12.0
+  - pip
+  - git-lfs
+  - pip:
+    - git+https://github.com/logsdon-lab/NucFlag.git@feature/v1.0-subcommands
