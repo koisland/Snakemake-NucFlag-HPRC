@@ -118,3 +118,10 @@ Uses cytobands and calls to get breakdown by region.
 ```bash
 python /project/logsdon_shared/projects/HPRC/Snakemake-NucFlag-HPRC-chrY/workflow/scripts/get_summary.py
 ```
+
+## Subset to chrY
+Because we're using CenMAP for ONT alignment, it renames the assembly. To generate a BAM with the original names:
+* This is fine because every main chrY contig in the assembly is ordered p to q so CenMAP does not reorient. 
+```bash
+snakemake -np -s workflow/rules/subset_renamed_bam_chrY.smk
+```
